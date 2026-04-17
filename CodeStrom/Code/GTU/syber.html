@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberGuard AI</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+html,body{margin:0;padding:0;height:100%;font-family:'DM Sans',sans-serif}
+*{box-sizing:border-box}
+.mono{font-family:'JetBrains Mono',monospace}
+.scan-line{animation:scanLine 2s linear infinite}
+@keyframes scanLine{0%{transform:translateY(-100%)}100%{transform:translateY(300%)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 8px rgba(0,255,136,0.3)}50%{box-shadow:0 0 20px rgba(0,255,136,0.6)}}
+.fade-up{animation:fadeUp .4s ease-out both}
+.glow-pulse{animation:pulseGlow 2s ease-in-out infinite}
+.threat-bar{transition:width .8s cubic-bezier(.4,0,.2,1)}
+.tab-active{border-bottom:2px solid #00ff88;color:#00ff88}
+.sim-option:hover{border-color:#00ff88;background:rgba(0,255,136,0.05)}
+.sim-option.selected{border-color:#00ff88;background:rgba(0,255,136,0.1)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0a0f1a}
+::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
+</style>
+  <script>
+tailwind.config={theme:{extend:{}}}
+</script>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full">
+  <div id="app" class="w-full h-full overflow-auto" style="background:#070b14;color:#c8d6e5"><header class="w-full px-4 py-4 border-b border-gray-800/50" style="background:linear-gradient(180deg,#0d1424,#070b14)">
+    <div class="max-w-5xl mx-auto flex items-center justify-between flex-wrap gap-3">
+     <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#00ff88,#00b4d8)"><i data-lucide="shield-check" style="width:22px;height:22px;color:#070b14"></i>
+      </div>
+      <div>
+       <h1 id="appTitle" class="text-lg font-bold" style="color:#e8f0fe">CyberGuard AI</h1>
+       <p id="appTagline" class="text-xs" style="color:#5a6a7a">Real-time threat intelligence</p>
+      </div>
+     </div>
+     <div class="flex items-center gap-4">
+      <div id="scoreDisplay" class="flex items-center gap-2 px-3 py-1.5 rounded-full mono text-sm" style="background:#111927;border:1px solid #1e293b"><i data-lucide="trophy" style="width:14px;height:14px;color:#00ff88"></i> <span style="color:#00ff88">Score: <strong id="totalScore">0</strong></span>
+      </div><button onclick="generatePDF()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style="background:#1e293b;color:#8892a4;border:1px solid #2a3548" title="Export PDF Report"> <i data-lucide="file-text" style="width:14px;height:14px"></i> Report </button>
+     </div>
+    </div>
+   </header><nav class="w-full border-b border-gray-800/50" style="background:#0a1020">
+    <div class="max-w-5xl mx-auto flex gap-0"><button onclick="switchTab('analyze')" id="tab-analyze" class="tab-active px-5 py-3 text-sm font-medium transition-colors" style="color:#00ff88;border-bottom:2px solid #00ff88"> <i data-lucide="scan" style="width:14px;height:14px;display:inline;vertical-align:-2px"></i> Analyze </button> <button onclick="switchTab('simulation')" id="tab-simulation" class="px-5 py-3 text-sm font-medium transition-colors" style="color:#5a6a7a;border-bottom:2px solid transparent"> <i data-lucide="target" style="width:14px;height:14px;display:inline;vertical-align:-2px"></i> Simulation </button> <button onclick="switchTab('history')" id="tab-history" class="px-5 py-3 text-sm font-medium transition-colors" style="color:#5a6a7a;border-bottom:2px solid transparent"> <i data-lucide="clock" style="width:14px;height:14px;display:inline;vertical-align:-2px"></i> History </button>
+    </div>
+   </nav><div id="panel-analyze" class="max-w-5xl mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5"><div class="lg:col-span-3 rounded-xl p-5" style="background:#0d1424;border:1px solid #1a2436"><label class="block text-sm font-semibold mb-1" style="color:#e8f0fe">Submit Suspicious Content</label>
+      <p class="text-xs mb-3" style="color:#5a6a7a">Paste an email, URL, or message to analyze</p><select id="inputType" class="w-full mb-3 px-3 py-2 rounded-lg text-sm" style="background:#111927;color:#c8d6e5;border:1px solid #1e293b"> <option value="email">📧 Email</option> <option value="url">🔗 URL</option> <option value="message">💬 Message / SMS</option> </select> <textarea id="userInput" rows="6" class="w-full px-3 py-2.5 rounded-lg text-sm mono resize-none" style="background:#111927;color:#c8d6e5;border:1px solid #1e293b" placeholder="Paste suspicious content here..."></textarea> <button id="analyzeBtn" onclick="analyzeInput()" class="mt-3 w-full py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all" style="background:linear-gradient(135deg,#00ff88,#00b4d8);color:#070b14"> <i data-lucide="zap" style="width:16px;height:16px"></i> <span id="analyzeBtnText">Analyze Threat</span> </button>
+     </div><div class="lg:col-span-2 space-y-4">
+      <div class="rounded-xl p-5 text-center" style="background:#0d1424;border:1px solid #1a2436">
+       <p class="text-xs uppercase tracking-wider mb-2" style="color:#5a6a7a">Awareness Level</p>
+       <div id="levelRing" class="w-28 h-28 mx-auto rounded-full flex items-center justify-center mb-3 glow-pulse" style="border:3px solid #00ff88;background:rgba(0,255,136,0.05)">
+        <div class="text-center"><span id="levelNum" class="text-3xl font-bold mono" style="color:#00ff88">0</span>
+         <p class="text-xs" style="color:#5a6a7a">points</p>
+        </div>
+       </div>
+       <p id="levelLabel" class="text-sm font-semibold" style="color:#00ff88">Novice</p>
+       <div class="mt-3 w-full rounded-full h-2" style="background:#1e293b">
+        <div id="levelBar" class="h-2 rounded-full threat-bar" style="background:#00ff88;width:0%"></div>
+       </div>
+       <p id="levelNext" class="text-xs mt-1" style="color:#5a6a7a">0/50 to Defender</p>
+      </div>
+      <div class="rounded-xl p-4" style="background:#0d1424;border:1px solid #1a2436">
+       <p class="text-xs font-semibold mb-2" style="color:#e8f0fe">Quick Stats</p>
+       <div id="quickStats" class="space-y-2 text-xs" style="color:#8892a4">
+        <div class="flex justify-between">
+         <span>Scans completed</span><span id="statScans" class="mono" style="color:#e8f0fe">0</span>
+        </div>
+        <div class="flex justify-between">
+         <span>Threats caught</span><span id="statThreats" class="mono" style="color:#ff6b6b">0</span>
+        </div>
+        <div class="flex justify-between">
+         <span>Safe cleared</span><span id="statSafe" class="mono" style="color:#00ff88">0</span>
+        </div>
+       </div>
+      </div>
+     </div>
+    </div><div id="resultPanel" class="mt-5 rounded-xl p-5 hidden fade-up" style="background:#0d1424;border:1px solid #1a2436">
+    </div>
+   </div><div id="panel-simulation" class="max-w-5xl mx-auto px-4 py-6 hidden">
+    <div id="simIntro" class="rounded-xl p-6 text-center" style="background:#0d1424;border:1px solid #1a2436">
+     <div class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style="background:rgba(0,255,136,0.1)"><i data-lucide="target" style="width:32px;height:32px;color:#00ff88"></i>
+     </div>
+     <h2 class="text-xl font-bold mb-2" style="color:#e8f0fe">Phishing Simulation Lab</h2>
+     <p class="text-sm mb-5 max-w-md mx-auto" style="color:#8892a4">Test your skills by identifying red flags in realistic phishing scenarios. Each scenario walks you through the warning signs.</p><button onclick="startSimulation()" class="px-6 py-2.5 rounded-lg font-semibold text-sm" style="background:linear-gradient(135deg,#00ff88,#00b4d8);color:#070b14">Start Simulation</button>
+    </div>
+    <div id="simContent" class="hidden"></div>
+   </div><div id="panel-history" class="max-w-5xl mx-auto px-4 py-6 hidden">
+    <div id="historyList" class="space-y-3"></div>
+    <div id="historyEmpty" class="text-center py-12" style="color:#5a6a7a"><i data-lucide="inbox" style="width:40px;height:40px;margin:0 auto 12px;display:block;color:#2a3548"></i>
+     <p class="text-sm">No analyses yet. Start by submitting content to analyze.</p>
+    </div>
+   </div>
+  </div>
+  <script>
+// ---- State (Local Storage) ----
+let allRecords = [];
+let currentScore = 0;
+let simStep = 0;
+let simFlags = [];
+
+function loadFromStorage() {
+  const stored = localStorage.getItem('cyberguard_data');
+  if (stored) {
+    try {
+      const data = JSON.parse(stored);
+      allRecords = data.records || [];
+      currentScore = data.score || 0;
+    } catch (e) {
+      console.error('Failed to load storage:', e);
+    }
+  }
+}
+
+function saveToStorage() {
+  localStorage.setItem('cyberguard_data', JSON.stringify({
+    records: allRecords,
+    score: currentScore,
+    lastSaved: new Date().toISOString()
+  }));
+}
+
+loadFromStorage();
+updateScoreUI(); // Update UI immediately on load
+updateStats();
+renderHistory();
+
+const defaultConfig = {
+  app_title: 'CyberGuard AI',
+  tagline: 'Real-time threat intelligence',
+  analyze_button_text: 'Analyze Threat',
+  background_color: '#070b14',
+  surface_color: '#0d1424',
+  text_color: '#c8d6e5',
+  accent_color: '#00ff88',
+  danger_color: '#ff6b6b',
+  font_family: 'DM Sans',
+  font_size: 14
+};
+
+// ---- MOCK SDK BYPASS: Prevents crash if running locally ----
+if (typeof window.elementSdk === 'undefined') {
+  window.elementSdk = {
+    config: defaultConfig,
+    init: function(params) {
+      if (params && params.onConfigChange) {
+        params.onConfigChange(params.defaultConfig || this.config);
+      }
+    },
+    setConfig: function(newCfg) {
+      this.config = Object.assign({}, this.config, newCfg);
+    }
+  };
+}
+
+// ---- Element SDK ----
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (cfg) => {
+    const g = (k) => cfg[k] || defaultConfig[k];
+    document.getElementById('appTitle').textContent = g('app_title');
+    document.getElementById('appTagline').textContent = g('tagline');
+    document.getElementById('analyzeBtnText').textContent = g('analyze_button_text');
+    document.getElementById('app').style.background = g('background_color');
+    document.getElementById('app').style.color = g('text_color');
+    document.getElementById('app').style.fontFamily = `${g('font_family')}, DM Sans, sans-serif`;
+    document.querySelectorAll('[style*="background:#0d1424"]').forEach(el => {
+      el.style.background = g('surface_color');
+    });
+  },
+  mapToCapabilities: (cfg) => {
+    const g = (k) => cfg[k] || defaultConfig[k];
+    const mut = (key) => ({ get: () => g(key), set: (v) => { cfg[key] = v; window.elementSdk.setConfig({ [key]: v }); } });
+    return {
+      recolorables: [mut('background_color'), mut('surface_color'), mut('text_color'), mut('accent_color'), mut('danger_color')],
+      borderables: [],
+      fontEditable: mut('font_family'),
+      fontSizeable: mut('font_size')
+    };
+  },
+  mapToEditPanelValues: (cfg) => new Map([
+    ['app_title', cfg.app_title || defaultConfig.app_title],
+    ['tagline', cfg.tagline || defaultConfig.tagline],
+    ['analyze_button_text', cfg.analyze_button_text || defaultConfig.analyze_button_text]
+  ])
+});
+
+// ---- UI Updater Functions ----
+function updateScoreUI() {
+  const ts = document.getElementById('totalScore');
+  const ln = document.getElementById('levelNum');
+  if (ts) ts.textContent = currentScore;
+  if (ln) ln.textContent = currentScore;
+  const levels = [
+    { name: 'Novice', min: 0, max: 50 },
+    { name: 'Defender', min: 50, max: 150 },
+    { name: 'Analyst', min: 150, max: 300 },
+    { name: 'Expert', min: 300, max: 500 },
+    { name: 'Guardian', min: 500, max: 999999 }
+  ];
+  const lv = levels.find(l => currentScore >= l.min && currentScore < l.max) || levels[0];
+  const lvIdx = levels.indexOf(lv);
+  const next = levels[Math.min(lvIdx + 1, levels.length - 1)];
+  const pct = Math.min(((currentScore - lv.min) / (lv.max - lv.min)) * 100, 100);
+  
+  const ll = document.getElementById('levelLabel');
+  const lb = document.getElementById('levelBar');
+  const lnxt = document.getElementById('levelNext');
+  
+  if (ll) ll.textContent = lv.name;
+  if (lb) lb.style.width = pct + '%';
+  if (lnxt) lnxt.textContent = lvIdx < levels.length - 1 ? `${currentScore}/${lv.max} to ${next.name}` : 'Max level reached!';
+}
+
+function updateStats() {
+  const ss = document.getElementById('statScans');
+  const st = document.getElementById('statThreats');
+  const ssafe = document.getElementById('statSafe');
+  
+  if (ss) ss.textContent = allRecords.length;
+  if (st) st.textContent = allRecords.filter(r => r.classification !== 'safe').length;
+  if (ssafe) ssafe.textContent = allRecords.filter(r => r.classification === 'safe').length;
+}
+
+function switchTab(tab) {
+  ['analyze','simulation','history'].forEach(t => {
+    const panel = document.getElementById('panel-' + t);
+    const btn = document.getElementById('tab-' + t);
+    if (!panel || !btn) return;
+    
+    panel.classList.toggle('hidden', t !== tab);
+    if (t === tab) { btn.style.color = '#00ff88'; btn.style.borderBottom = '2px solid #00ff88'; }
+    else { btn.style.color = '#5a6a7a'; btn.style.borderBottom = '2px solid transparent'; }
+  });
+  if(window.lucide) window.lucide.createIcons();
+}
+
+// ---- Analysis Engine ----
+const phishingPatterns = [
+  { regex: /urgent|immediately|suspend|verify your|confirm your|account.*(locked|suspended|compromised|restricted)/i, flag: 'Urgency & fear tactics detected', weight: 3, severity_boost: 10 },
+  { regex: /click\s*(here|below|this\s*link)|follow\s*this\s*link|confirm\s*now/i, flag: 'Suspicious call-to-action link', weight: 2, severity_boost: 8 },
+  { regex: /dear\s*(customer|user|valued|sir|madam|client|friend)/i, flag: 'Generic greeting (not personalized)', weight: 1, severity_boost: 3 },
+  { regex: /password|social\s*security|ssn|credit\s*card|bank\s*account|pin\s*number|atm|routing/i, flag: 'Requests sensitive information', weight: 4, severity_boost: 15 },
+  { regex: /paypa[l1]|amazo[n0]|micros[o0]ft|g[o0]{2}gle|app[l1]e|netfl[i1]x|appl[3e]|ebay|apple\.com|paypal\.com/i, flag: 'Brand impersonation attempt', weight: 3, severity_boost: 12 },
+  { regex: /winner|congratulations|you\s*(have\s*)?won|lottery|prize|reward|claim.*reward|free.*money/i, flag: 'Too-good-to-be-true offer', weight: 3, severity_boost: 10 },
+  { regex: /bit\.ly|tinyurl|goo\.gl|t\.co|shortened|url\s*short|^https?:\/\/[a-z0-9]{1,6}\.[a-z]{2,}/i, flag: 'Shortened/obfuscated URL', weight: 2, severity_boost: 8 },
+  { regex: /\.ru\/|\.cn\/|\.tk\/|\.xyz\/|\.top\/|\.ml\/|\.ga\/|\.cf\/|\.cc\//i, flag: 'High-risk domain TLD', weight: 2, severity_boost: 9 },
+  { regex: /^http:\/\/(?!localhost|127\.0\.0\.1)/i, flag: 'Insecure HTTP (no encryption)', weight: 2, severity_boost: 8 },
+  { regex: /wire\s*transfer|western\s*union|bitcoin|crypto|wallet|gift\s*card|itunes|google\s*play/i, flag: 'Unusual payment method', weight: 4, severity_boost: 14 },
+  { regex: /recieve|acount|seperator|occured|adress|exagerate|untill|agian|unfortunatly|buisness|enviroment/i, flag: 'Spelling/grammar errors', weight: 1, severity_boost: 2 },
+  { regex: /attachment|\.exe|\.zip|\.scr|\.bat|\.com|\.vbs|download\s*file|open\s*attachment/i, flag: 'Suspicious file/download', weight: 3, severity_boost: 13 },
+  { regex: /act\s*now|limited\s*time|expires?\s*(today|soon|in\s*\d|immediately|within|asap)/i, flag: 'Artificial time pressure', weight: 2, severity_boost: 7 },
+  { regex: /from:\s*.*@[^\s]*(?!gmail\.com|outlook\.com|yahoo\.com|hotmail\.com)/i, flag: 'Suspicious sender domain', weight: 2, severity_boost: 9 },
+  { regex: /login|log\s*in|sign\s*in|verify\s*account|confirm\s*identity|authentication|re-enter|update.*password/i, flag: 'Credential harvesting attempt', weight: 3, severity_boost: 12 },
+  { regex: /unexpected.*charge|unauthorized|refund|reverse|dispute|payment.*failed|billing\s*issue/i, flag: 'Financial urgency manipulation', weight: 3, severity_boost: 10 }
+];
+
+function analyzeContent(text, type) {
+  const matched = [];
+  let totalWeight = 0;
+  let severityModifier = 0;
+
+  phishingPatterns.forEach(p => {
+    if (p.regex.test(text)) {
+      matched.push(p.flag);
+      totalWeight += p.weight;
+      severityModifier += (p.severity_boost || 0);
+    }
+  });
+
+  const hasCredsRequest = /password|ssn|credit.*card|pin|bank.*account/i.test(text);
+  const hasUrgency = /urgent|immediately|suspend|locked/i.test(text);
+  const hasLink = /https?:\/\/|click|link/i.test(text);
+  const hasBrandImpersonation = /paypa[l1]|amazo[n0]|micros[o0]ft|g[o0]{2}gle/i.test(text);
+  
+  let combinationBoost = 0;
+  if (hasCredsRequest && hasUrgency && hasLink) combinationBoost += 15;
+  if (hasBrandImpersonation && hasCredsRequest) combinationBoost += 10;
+  if (hasUrgency && hasLink && /reward|prize|winner/i.test(text)) combinationBoost += 8;
+
+  let classification, severity, explanation, advice, scoreEarned;
+  
+  if (totalWeight === 0 && combinationBoost === 0) {
+    classification = 'safe';
+    severity = 0;
+    explanation = 'No known threat indicators detected. This content appears legitimate with natural language patterns, proper grammar, no suspicious links, and no requests for sensitive information.';
+    advice = '✅ This passes basic security checks. However, always verify sender identity through official channels if it requests any action. When in doubt, contact the organization directly.';
+    scoreEarned = 5;
+  } else if (totalWeight <= 3 && combinationBoost === 0) {
+    classification = 'low-risk';
+    severity = Math.min(20 + totalWeight * 8, 35);
+    explanation = `Minor suspicious indicators detected. Some language patterns are unusual, but no critical threat vectors identified. Could be legitimate but unusual communication.`;
+    advice = '⚠️ Verify the sender independently before clicking links or opening attachments. Don\'t provide sensitive info. Contact the organization through official channels if unsure.';
+    scoreEarned = 3;
+  } else if (totalWeight <= 8 || (totalWeight >= 4 && combinationBoost > 0)) {
+    classification = 'phishing';
+    severity = Math.min(45 + totalWeight * 6 + combinationBoost, 79);
+    explanation = `Multiple phishing indicators detected (${matched.length} flags). This uses common social engineering tactics: urgency, brand impersonation, credential requests, and deceptive links to trick you into compromising your account.`;
+    advice = '🎣 DO NOT click links or download attachments. DO NOT provide credentials. Report to your IT/email provider immediately. Delete the message. If you already clicked, change passwords from a secure device.';
+    scoreEarned = Math.min(12 + matched.length * 2, 28);
+  } else if (totalWeight <= 14 || (hasCredsRequest && matched.length > 5)) {
+    classification = 'malware';
+    severity = Math.min(65 + totalWeight * 4 + combinationBoost, 92);
+    explanation = `HIGH RISK: Multiple severe threat vectors detected (${matched.length} indicators). This appears to be a sophisticated multi-vector attack combining phishing with potential malware delivery or financial fraud.`;
+    advice = '🦠 CRITICAL: Delete immediately without interacting. Do NOT open attachments or click links. If already opened attachments, run full antivirus scan immediately. Enable 2FA on all accounts. Contact your security team urgently.';
+    scoreEarned = Math.min(18 + matched.length * 3, 35);
+  } else {
+    classification = 'social-engineering';
+    severity = Math.min(80 + totalWeight * 2 + combinationBoost, 100);
+    explanation = `CRITICAL THREAT: Severe combination of social engineering tactics across multiple vectors (${matched.length} indicators). This shows hallmarks of targeted, sophisticated attack: urgency, brand spoofing, credential harvesting, and financial manipulation.`;
+    advice = '🎭 CRITICAL THREAT: Isolate device if possible. DO NOT interact with any element. Contact your security team IMMEDIATELY. Document everything but do not forward. Change ALL passwords from a different, secure device. Consider freezing credit.';
+    scoreEarned = Math.min(20 + matched.length * 3, 40);
+  }
+
+  return { classification, severity, flags: matched, explanation, advice, score: scoreEarned, indicatorCount: matched.length, combinationBoost };
+}
+
+function severityColor(s) {
+  if (s === 0) return '#00ff88';
+  if (s < 30) return '#ffd93d';
+  if (s < 60) return '#ff8c42';
+  return '#ff6b6b';
+}
+
+function classLabel(c) {
+  const map = { safe: '✅ Safe', 'low-risk': '⚠️ Low Risk', phishing: '🎣 Phishing', malware: '🦠 Malware', 'social-engineering': '🎭 Social Engineering' };
+  return map[c] || c;
+}
+
+async function analyzeInput() {
+  const input = document.getElementById('userInput').value.trim();
+  if (!input) return;
+  const type = document.getElementById('inputType').value;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-gray-800 border-t-transparent rounded-full animate-spin"></span> Analyzing...';
+
+  await new Promise(r => setTimeout(r, 800 + Math.random() * 700));
+
+  const result = analyzeContent(input, type);
+  const col = severityColor(result.severity);
+
+  const record = {
+    id: 'rec_' + Date.now() + Math.random().toString(36).substr(2, 9),
+    type,
+    input_preview: input.substring(0, 120),
+    classification: result.classification,
+    severity: result.severity,
+    timestamp: new Date().toISOString(),
+    score_earned: result.score
+  };
+  allRecords.push(record);
+  currentScore += result.score;
+  saveToStorage();
+
+  const panel = document.getElementById('resultPanel');
+  panel.classList.remove('hidden');
+  panel.className = 'mt-5 rounded-xl p-5 fade-up';
+  panel.style.background = '#0d1424';
+  panel.style.border = `1px solid ${col}40`;
+  panel.innerHTML = `
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <div>
+        <span class="text-lg font-bold" style="color:${col}">${classLabel(result.classification)}</span>
+        <span class="ml-2 text-xs mono px-2 py-0.5 rounded-full" style="background:${col}20;color:${col}">Severity: ${result.severity}/100</span>
+      </div>
+      <span class="text-xs mono px-2 py-1 rounded" style="background:#00ff8820;color:#00ff88">+${result.score} pts</span>
+    </div>
+    <div class="w-full h-2 rounded-full mb-4" style="background:#1e293b">
+      <div class="h-2 rounded-full threat-bar" style="background:${col};width:0%" id="threatBar"></div>
+    </div>
+    <div class="mb-3 p-3 rounded-lg" style="background:#111927">
+      <p class="text-xs font-semibold mb-1" style="color:#e8f0fe">🔍 Threat Analysis Summary</p>
+      <div class="text-xs" style="color:#8892a4">
+        <div class="flex justify-between mb-1"><span>Indicators Found:</span><span style="color:${col}">${result.indicatorCount} flags detected</span></div>
+        <div class="flex justify-between"><span>Threat Level:</span><span style="color:${col}">${result.severity}/100</span></div>
+      </div>
+    </div>
+    ${result.flags.length ? `
+    <div class="mb-4 p-3 rounded-lg" style="background:#111927">
+      <p class="text-xs font-semibold mb-2" style="color:#e8f0fe">⚠️ Detected Indicators:</p>
+      <div class="space-y-2">
+        ${result.flags.map((f, i) => `
+          <div class="flex items-start gap-2 p-2 rounded" style="background:${col}10;border-left:2px solid ${col}">
+            <span class="text-xs font-bold" style="color:${col}">${i+1}.</span>
+            <span class="text-xs" style="color:#c8d6e5">${f}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}
+    <div class="mb-3 p-3 rounded-lg" style="background:#111927">
+      <p class="text-xs font-semibold mb-1" style="color:#e8f0fe">💡 Why This Matters</p>
+      <p class="text-sm" style="color:#8892a4">${result.explanation}</p>
+    </div>
+    <div class="p-3 rounded-lg" style="background:#111927">
+      <p class="text-xs font-semibold mb-1" style="color:#e8f0fe">🛡️ Your Action Plan</p>
+      <p class="text-sm" style="color:#8892a4">${result.advice}</p>
+    </div>
+  `;
+  setTimeout(() => { const tb = document.getElementById('threatBar'); if (tb) tb.style.width = result.severity + '%'; }, 50);
+  
+  updateScoreUI();
+  updateStats();
+  renderHistory();
+
+  btn.disabled = false;
+  const safeButtonText = window.elementSdk.config.analyze_button_text || 'Analyze Threat';
+  btn.innerHTML = `<i data-lucide="zap" style="width:16px;height:16px"></i><span id="analyzeBtnText">${safeButtonText}</span>`;
+  if(window.lucide) window.lucide.createIcons();
+}
+
+// ---- History ----
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+  if (!list || !empty) return;
+  
+  if (!allRecords.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  
+  const existing = new Map([...list.children].map(el => [el.dataset.id, el]));
+  const sorted = [...allRecords].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  
+  sorted.forEach(rec => {
+    const id = rec.id; 
+    const col = severityColor(rec.severity);
+    if (existing.has(id)) {
+      existing.delete(id);
+    } else {
+      const div = document.createElement('div');
+      div.dataset.id = id;
+      div.className = 'flex items-center justify-between p-3 rounded-lg';
+      div.style.cssText = `background:#0d1424;border:1px solid #1a2436`;
+      const d = new Date(rec.timestamp);
+      div.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-semibold" style="color:${col}">${classLabel(rec.classification)}</span>
+            <span class="text-xs mono" style="color:#5a6a7a">${rec.type}</span>
+          </div>
+          <p class="text-xs truncate mono" style="color:#8892a4">${rec.input_preview || ''}</p>
+        </div>
+        <div class="text-right ml-3 shrink-0">
+          <span class="text-xs mono" style="color:${col}">${rec.severity}/100</span>
+          <p class="text-xs" style="color:#5a6a7a">${d.toLocaleDateString()}</p>
+        </div>
+      `;
+      list.appendChild(div);
+    }
+  });
+  existing.forEach(el => el.remove());
+}
+
+// ---- Simulation ----
+const simScenarios = [
+  {
+    title: 'Suspicious Account Email',
+    from: 'security@paypa1-support.com',
+    subject: 'Urgent: Your Account Has Been Compromised!',
+    body: `Dear Valued Customer,\n\nWe have detected unauthorized access to your PayPal account. Your account has been temporarily suspended for your protection.\n\nTo restore access, please verify your identity immediately by clicking the link below:\n\nhttp://paypa1-secure-verify.tk/login?ref=urgent\n\nYou must complete this within 24 hours or your account will be permanently locked.\n\nBest regards,\nPayPal Security Team`,
+    flags: [
+      { id: 'sender', label: 'Spoofed sender domain (paypa1 not paypal)', hint: 'Look at the sender email — "paypa1" uses the number 1 instead of the letter L. This is a common domain spoofing technique.' },
+      { id: 'urgency', label: 'Fear and urgency tactics', hint: '"Compromised", "suspended", "permanently locked", "immediately" — these words trigger panic.' },
+      { id: 'greeting', label: 'Generic greeting "Dear Valued Customer"', hint: 'Legitimate companies usually address you by name (which they have on file).' },
+      { id: 'link', label: 'Suspicious link with .tk domain', hint: 'The URL goes to a free top-level domain (TLD) often used for phishing.' },
+      { id: 'deadline', label: '24-hour artificial deadline', hint: 'Creating fake urgency ("within 24 hours") is a classic phishing tactic.' },
+      { id: 'http', label: 'Insecure HTTP (not HTTPS)', hint: 'The link uses http:// instead of https://. Legitimate login pages ALWAYS use https://.' }
+    ]
+  }
+];
+
+function startSimulation() {
+  simStep = 0;
+  simFlags = [];
+  const sc = simScenarios[0]; // Simplified for robust running
+  document.getElementById('simIntro').classList.add('hidden');
+  const content = document.getElementById('simContent');
+  content.classList.remove('hidden');
+  content.innerHTML = `
+    <div class="rounded-xl overflow-hidden fade-up" style="border:1px solid #1a2436">
+      <div class="px-5 py-3 flex items-center justify-between" style="background:#111927;border-bottom:1px solid #1a2436">
+        <span class="text-sm font-semibold" style="color:#e8f0fe">📧 Simulated Email</span>
+        <span class="text-xs px-2 py-0.5 rounded-full" style="background:#ff6b6b20;color:#ff6b6b">Phishing Scenario</span>
+      </div>
+      <div class="p-5" style="background:#0d1424">
+        <div class="text-xs mb-1" style="color:#5a6a7a">From: <span class="mono" style="color:#ff8c42">${sc.from}</span></div>
+        <div class="text-xs mb-3" style="color:#5a6a7a">Subject: <span style="color:#e8f0fe">${sc.subject}</span></div>
+        <div class="p-4 rounded-lg mono text-sm whitespace-pre-wrap leading-relaxed" style="background:#111927;color:#c8d6e5;border:1px solid #1e293b">${sc.body}</div>
+      </div>
+      <div class="px-5 py-4" style="background:#0a1020;border-top:1px solid #1a2436">
+        <p class="text-sm font-semibold mb-3" style="color:#e8f0fe">🔍 Identify the red flags (select all that apply):</p>
+        <div id="simOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          ${sc.flags.map(f => `
+            <button onclick="toggleSimFlag('${f.id}')" id="sim-${f.id}" class="sim-option text-left p-3 rounded-lg text-xs transition-all" style="border:1px solid #1e293b;color:#c8d6e5">
+              <span class="block font-medium">${f.label}</span>
+              <span class="text-xs" style="color:#5a6a7a">hint available on submit</span>
+            </button>
+          `).join('')}
+        </div>
+        <button onclick="checkSimulation()" class="mt-4 w-full py-2.5 rounded-lg font-semibold text-sm" style="background:linear-gradient(135deg,#00ff88,#00b4d8);color:#070b14">Check My Answers</button>
+        <div id="simResult" class="mt-4 hidden"></div>
+      </div>
+    </div>
+  `;
+  window.currentScenario = sc;
+  if(window.lucide) window.lucide.createIcons();
+}
+
+function toggleSimFlag(id) {
+  const idx = simFlags.indexOf(id);
+  if (idx > -1) simFlags.splice(idx, 1); else simFlags.push(id);
+  document.getElementById('sim-' + id).classList.toggle('selected');
+}
+
+async function checkSimulation() {
+  const sc = window.currentScenario;
+  const total = sc.flags.length;
+  const correct = simFlags.length;
+  const pct = Math.round((correct / total) * 100);
+  const res = document.getElementById('simResult');
+  res.classList.remove('hidden');
+
+  let details = '';
+  sc.flags.forEach(f => {
+    const found = simFlags.includes(f.id);
+    details += `<div class="flex items-start gap-2 p-3 rounded-lg mb-2" style="background:#111927;border-left:3px solid ${found ? '#00ff88' : '#ff6b6b'}">
+      <span>${found ? '✅' : '❌'}</span>
+      <div class="flex-1">
+        <p class="text-xs font-semibold" style="color:${found ? '#00ff88' : '#ff6b6b'}">${f.label}</p>
+        <p class="text-xs" style="color:#8892a4; margin-top:4px">${f.hint}</p>
+      </div>
+    </div>`;
+  });
+
+  const score = correct * 5;
+  const accuracy = pct >= 80 ? '🔥 Excellent!' : pct >= 50 ? '👍 Good progress' : '📚 Keep learning!';
+  
+  const record = {
+    id: 'rec_' + Date.now() + Math.random().toString(36).substr(2, 9),
+    type: 'simulation',
+    input_preview: 'Phishing Simulation: ' + sc.title + ` (${correct}/${total} correct)`,
+    classification: 'phishing',
+    severity: 75 + (pct * 0.25),
+    timestamp: new Date().toISOString(),
+    score_earned: score
+  };
+  allRecords.push(record);
+  currentScore += score;
+  saveToStorage();
+  
+  res.innerHTML = `
+    <div class="p-4 rounded-lg fade-up" style="background:#0a1020;border:1px solid #1a2436">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-lg font-bold" style="color:${pct >= 80 ? '#00ff88' : pct >= 50 ? '#ffd93d' : '#ff8c42'}">${accuracy}</span><br/>
+          <span class="text-xs" style="color:#8892a4">${correct}/${total} red flags identified (${pct}%)</span>
+        </div>
+        <span class="text-sm mono px-3 py-1.5 rounded-lg font-bold" style="background:#00ff8820;color:#00ff88">+${score} pts</span>
+      </div>
+      ${details}
+      <button onclick="resetSimulation()" class="mt-3 w-full py-2 rounded-lg text-xs font-medium" style="background:#1e293b;color:#8892a4">Try Another Scenario</button>
+    </div>
+  `;
+  updateScoreUI();
+  updateStats();
+  renderHistory();
+}
+
+function resetSimulation() {
+  document.getElementById('simIntro').classList.remove('hidden');
+  document.getElementById('simContent').classList.add('hidden');
+  document.getElementById('simContent').innerHTML = '';
+  simFlags = [];
+  simStep = 0;
+}
+
+function generatePDF() {
+  alert("PDF Export Function Executed (Simplified for standalone testing)");
+}
+
+if(window.lucide) window.lucide.createIcons();
+  </script>
+ </body>
+</html>
